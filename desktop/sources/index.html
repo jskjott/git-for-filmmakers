@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+  <head>
+    <meta charset='UTF-8'>
+	<script src="scripts/parser.js"></script>
+	<script src="scripts/renderer.js"></script>
+
+	<link href="style.css" rel="stylesheet" type="text/css">
+	<title>Git for Filmmakers</title>
+</head>
+
+<body>
+	<script>
+		const Vue = require('vue');
+		const d3 = require('d3');
+		const fs = require('fs').promises;
+
+		const vue = new Vue({
+		data: {
+		    rawXML: null,
+		    timelineData: null,
+		    timeline: null
+		},
+		methods: {
+		    getXML: async function(filePath) {
+		    	return await fs.readFile('sources/example.xml', 'utf8');
+		    },
+		    parse: (text) => { 
+		    	return parser(text)
+		    },
+		    render: (data) => {
+		    	timeline(data)
+		    },
+		},
+		created: async function() {
+		    this.rawXML = await this.getXML('example.xml');
+		},
+		watch: {
+		    rawXML: function() {
+		      	this.timelineData = this.parse(this.rawXML);
+		      	this.render(this.timelineData);
+		    }
+		  }
+		});
+	</script>	
+</body>
+

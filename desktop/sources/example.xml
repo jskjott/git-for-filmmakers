@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+<fcpxml version="1.8">
+    <resources>
+        <format height="1080" id="r0" frameDuration="1001/24000s" width="1920" name="FFVideoFormat1080p2398"/>
+        <asset id="r1" audioChannels="2" src="file:///Users/jonathanskjott/Documents/Desktop/Daerim-dong_footage.mp4" duration="527527/8000s" format="r0" start="0/1s" hasVideo="1" name="Daerim-dong_footage.mp4" hasAudio="1" audioSources="1"/>
+    </resources>
+    <library>
+        <event name="Timeline 1 (Resolve)">
+            <project name="Timeline 1 (Resolve)">
+                <sequence tcFormat="NDF" duration="2515513/24000s" format="r0" tcStart="18018/5s">
+                    <spine>
+                        <asset-clip tcFormat="NDF" ref="r1" duration="19019/750s" offset="18018/5s" format="r0" start="0/1s" name="Daerim-dong_footage.mp4" enabled="1">
+                            <adjust-transform position="0 0" anchor="0 0" scale="1 1"/>
+                            <asset-clip tcFormat="NDF" ref="r1" duration="223223/8000s" offset="4004/375s" format="r0" start="7007/1500s" lane="1" name="Daerim-dong_footage.mp4" enabled="1">
+                                <adjust-transform position="0 0" anchor="0 0" scale="1 1"/>
+                            </asset-clip>
+                        </asset-clip>
+                        <asset-clip tcFormat="NDF" ref="r1" duration="973973/24000s" offset="2721719/750s" format="r0" start="19019/750s" name="Daerim-dong_footage.mp4" enabled="1">
+                            <adjust-transform position="0 0" anchor="0 0" scale="1 1"/>
+                            <asset-clip tcFormat="NDF" ref="r1" duration="223223/8000s" offset="47047/960s" format="r0" start="7007/1500s" lane="1" name="Daerim-dong_footage.mp4" enabled="1">
+                                <adjust-transform position="0 0" anchor="0 0" scale="1 1"/>
+                            </asset-clip>
+                        </asset-clip>
+                        <gap duration="263263/24000s" offset="29356327/8000s" start="3600/1s" name="Gap"/>
+                        <asset-clip tcFormat="NDF" ref="r1" duration="223223/8000s" offset="22083061/6000s" format="r0" start="7007/1500s" name="Daerim-dong_footage.mp4" enabled="1">
+                            <adjust-transform position="0 0" anchor="0 0" scale="1 1"/>
+                        </asset-clip>
+                    </spine>
+                </sequence>
+            </project>
+        </event>
+    </library>
+</fcpxml>

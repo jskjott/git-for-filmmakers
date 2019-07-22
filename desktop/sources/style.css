@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css?family=Merriweather');
+
+* { 
+	margin: 0; 
+}
+
+body { 
+	line-height: 1.6; font-family: 'Merriweather', serif; 
+}
+
+h1, h2, p { 
+	margin-bottom: 1rem; 
+}
+
+a { 
+	color: inherit; 
+}
+
+rect {
+	fill: none;
+	stroke: grey;
+	color: white;
+}
