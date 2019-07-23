@@ -1,5 +1,4 @@
-const { app, BrowserWindow, webFrame, Menu } = require('electron')
-const isShown = true
+const { app, BrowserWindow } = require('electron')
 let win = null
 
 app.on('ready', () => {
@@ -26,7 +25,3 @@ app.on('window-all-closed', function() {
 		app.quit()
 	}
 })
-class Main {
-	loadFile(input) {}
-	on(input, callback) {}
-}
