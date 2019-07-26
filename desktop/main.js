@@ -3,8 +3,8 @@ let win = null
 
 app.on('ready', () => {
 	win = new BrowserWindow({
-		width: 1000,
-		height: 500,
+		width: 1200,
+		height: 600,
 		minWidth: 380,
 		minHeight: 380,
 		backgroundColor: 'white',

@@ -3,6 +3,7 @@
     <meta charset='UTF-8'>
 	<script src="scripts/parser.js"></script>
 	<script src="scripts/renderer.js"></script>
+	<script src="scripts/helperfunctions.js"></script>
 	<script src="scripts/git.js"></script>
 
 	<link href="style.css" rel="stylesheet" type="text/css">
@@ -10,6 +11,9 @@
 </head>
 
 <body>
+	<div id="graph"></div>
+	<div id="timeline"></div>
+
 	<script>
 		const Vue = require('vue');
 
@@ -23,8 +27,9 @@
 		    parse: (data) => { 
 		    	return parser(data)
 		    },
-		    render: (data) => {
-		    	timeline(data)
+		    render: (data, diffXML) => {
+		    	initRender(data)
+		    	//renderDiff(data, diffXML)
 		    },
 		},
 		created: async function() {
@@ -32,8 +37,8 @@
 		},
 		watch: {
 		    diffXML: function() {
-		      	this.timelineData = this.parse(this.diffXML);
-		      	this.render(this.timelineData);
+		      	this.timelineData = this.parse(this.diffXML)
+		      	this.render(this.timelineData, this.diffXML)
 		    }
 		  }
 		});

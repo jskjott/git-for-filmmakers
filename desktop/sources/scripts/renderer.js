@@ -1,63 +1,43 @@
 const d3 = require('d3')
 
-function parseFCPTimeSeconds(timeString) {
-	const vals = timeString.split('/')
-	let secondTiming
-	if (vals.length === 1) {
-		secondTiming = parseFloat(vals[0])
-	} else {
-		secondTiming = parseFloat(vals[0]) / parseFloat(vals[1])
-	}
-	return secondTiming
-}
 
-function timeline(timelineData) {
-	timelineData.forEach((state, i) => {
-		const data = state.map(clip => {
-			const timelineBlock = {
-				offset: parseFCPTimeSeconds(clip[0]),
-				duration: parseFCPTimeSeconds(clip[1]),
-				lane: parseInt(clip[2]),
-			}
-			return timelineBlock
-		})
+function initRender(timelineData) {
+	timelineData.forEach((data, i) => {
+		const scales = getScales(data)
 
-		const lane0 = data.filter(d => d.lane === 0)
-		const max = d3.max(lane0, block => {
-			return block.duration
-		})
-		const min = d3.min(lane0, d => {
-			return d.offset
-		})
-		const extent = d3.extent(lane0, d => {
-			return d.offset
-		})
-		extent[1] = extent[1] + max
-		extent.forEach((ele, i) => (extent[i] = ele - min))
-		const offsetScale = d3
-			.scaleLinear()
-			.domain(extent)
-			.range([0, 800])
-
-		d3.select('body')
+		d3.select('#timeline    ')
 			.append('svg')
-			.attr('width', 1000)
-			.attr('height', 200)
+			.attr('width', 800)
+			.attr('height', scales.timelineHeight)
 			.attr('id', `svg-${i}`)
-		const svg = d3.select(`#svg-${i}`)
-		svg.selectAll('rect')
-			.data(data)
-			.enter()
-			.append('rect')
-			.attr('y', d => {
-				return 50 + d.lane * 55
-			})
-			.attr('height', 50)
-			.attr('x', d => {
-				return offsetScale(d.lane === 0 ? d.offset - min : d.offset)
-			})
-			.attr('width', d => {
-				return offsetScale(d.duration)
-			})
+
+		renderBlocks(data, i, scales)
 	})
 }
+
+function renderBlocks(blocks, i, scales) {
+			.append('svg')
+	const svg = d3.select(`#svg-${i}`)
+
+	svg.selectAll('rect')
+		.data(blocks)
+        .enter()
+		.append('rect')
+		.attr('y', d => {
+			return scales.timelineHeight - (75 + (d.lane ? d.lane * 55 : 2.5))
+		})
+		.attr('height', 50)
+		.attr('x', d => {
+			return scales.offsetScale(d.lane === 0 ? d.offset - scales.min : d.offset)
+		})
+		.attr('width', d => {
+			return scales.offsetScale(d.duration)
+		})
+		.attr('stroke', d => {
+            return d.color
+        })
+
+    svg.exit()
+        .remove()
+}
+

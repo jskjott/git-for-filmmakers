@@ -1,3 +1,14 @@
+function parseFCPTimeSeconds(timeString) {
+	const vals = timeString.split('/')
+	let secondTiming
+	if (vals.length === 1) {
+		secondTiming = parseFloat(vals[0])
+	} else {
+		secondTiming = parseFloat(vals[0]) / parseFloat(vals[1])
+	}
+	return secondTiming
+}
+
 function parser(diffArray) {
 	const offsetReg = /(?:^|\s)offset="(.*?)s/
 	const durationReg = /(?:^|\s)duration="(.*?)s/
@@ -22,7 +33,11 @@ function parser(diffArray) {
 					} else {
 						lane = 0
 					}
-					clipElements.push([offset[1], duration[1], lane])
+					clipElements.push({
+						offset: parseFCPTimeSeconds(offset[1]),
+						duration: parseFCPTimeSeconds(duration[1]),
+						lane: parseInt(lane),
+					})
 				}
 			})
 

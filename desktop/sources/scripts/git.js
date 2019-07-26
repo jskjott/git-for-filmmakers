@@ -29,7 +29,7 @@ function diff({ dir, filepath }) {
 		.then(function(newFile) {
 			return Promise.all([newFile, readBranchFile({ fs, dir })])
 		})
-		.then((data) => {
+		.then(data => {
 			const files = data[1].reverse()
 			const diffArray = files.map((file, i) => {
 				if (i === 0) {
