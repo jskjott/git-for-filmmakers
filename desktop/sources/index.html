@@ -21,14 +21,15 @@
 		data: {
 		    diffXML: null,
 		    timelineData: null,
-		    timeline: null
+		    timeline: null,
+		    scale: null,
 		},
 		methods: {
 		    parse: (data) => { 
 		    	return parser(data)
 		    },
-		    render: (data, diffXML) => {
-		    	initRender(data)
+		    render: (data, diffXML, scale) => {
+		    	initRender(data, scale)
 		    },
 		},
 		created: async function() {
@@ -40,7 +41,9 @@
 		      	this.diffXML.forEach((timeline, i) => {
 		      		this.timelineData[i].push(...parseDiff([timeline]))	
 		      	})
-		      	this.render(this.timelineData, this.diffXML)
+
+		      	this.scale = new Scale(this.timelineData)
+		      	this.render(this.timelineData, this.diffXML, this.scale)
 		    }
 		  }
 		});
