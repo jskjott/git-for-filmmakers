@@ -2,6 +2,7 @@
 
 * { 
 	margin: 0; 
+	background-color: #1a161a;
 }
 
 body { 
@@ -20,9 +21,15 @@ a {
 }
 
 svg {
-	border-bottom: double;
+    display: block;
 }
 
+#timeline {
+	display: block;	
+}
+
+
 #graph {
-	border-right: double;
+	border-right: solid;
+	background-color: #1f191f;
 }

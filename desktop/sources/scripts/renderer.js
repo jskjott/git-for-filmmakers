@@ -9,11 +9,28 @@ function initRender(timelineData, scale) {
 
 		const timelineHeight = 40 + laneNumber * 55
 
-		d3.select('#timeline    ')
+		const timeline = d3
+			.select('#timeline')
 			.append('svg')
 			.attr('width', 800)
 			.attr('height', timelineHeight)
+			.style('background-color', '#1a161a')
 			.attr('id', `svg-${i}`)
+
+		Array.from(Array(parseInt(scale.max)).keys()).forEach(step => {
+			if (step % 2 === 0) {
+				timeline
+					.append('line')
+					.attr('x1', scale.offsetScale(step))
+					.attr('y1', 0)
+					.attr('x2', scale.offsetScale(step))
+					.attr('y2', timelineHeight)
+					.style(
+						'stroke',
+						d3.hsl({ h: 0, s: 0, l: 0.25, opacity: 0.5 }),
+					)
+			}
+		})
 
 		renderBlocks(data, i, scale, timelineHeight)
 	})

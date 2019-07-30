@@ -37,7 +37,7 @@ function parser(diffArray) {
 						offset: parseTime(offset[1]),
 						duration: parseTime(duration[1]),
 						lane: parseInt(lane),
-						color: 'white',
+						color: 'dimgrey',
 					})
 				}
 			})
@@ -90,7 +90,8 @@ function parseDiff(diffArray) {
 						lane: line[0].match(laneReg)
 							? parseInt(line[0].match(laneReg)[1])
 							: 0,
-						color: hunk[0].added === true ? 'green' : 'red',
+						color:
+							hunk[0].added === true ? 'forestgreen' : 'crimson',
 					})
 				})
 			} else if (!allSame && assetClips.length > 0) {
@@ -110,9 +111,9 @@ function parseDiff(diffArray) {
 					(assetClips[0][1] && points[0] > points[1]) ||
 					(assetClips[1][1] && points[1] > points[0])
 				) {
-					color = 'green'
+					color = 'forestgreen'
 				} else {
-					color = 'red'
+					color = 'crimson'
 				}
 
 				if (points[0] > points[1]) {

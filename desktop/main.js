@@ -8,6 +8,9 @@ app.on('ready', () => {
 		minWidth: 380,
 		minHeight: 380,
 		backgroundColor: 'white',
+		frame: process.platform !== 'darwin',
+		skipTaskbar: process.platform === 'darwin',
+		autoHideMenuBar: process.platform === 'darwin',
 		webPreferences: {
 			nodeIntegration: true,
 		},
