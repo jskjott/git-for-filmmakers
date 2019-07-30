@@ -19,12 +19,6 @@ a {
 	color: inherit; 
 }
 
-rect {
-	fill: none;
-	stroke: grey;
-	color: white;
-}
-
 svg {
 	border-bottom: double;
 }

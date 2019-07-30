@@ -29,7 +29,6 @@
 		    },
 		    render: (data, diffXML) => {
 		    	initRender(data)
-		    	//renderDiff(data, diffXML)
 		    },
 		},
 		created: async function() {
@@ -38,6 +37,9 @@
 		watch: {
 		    diffXML: function() {
 		      	this.timelineData = this.parse(this.diffXML)
+		      	this.diffXML.forEach((timeline, i) => {
+		      		this.timelineData[i].push(...parseDiff([timeline]))	
+		      	})
 		      	this.render(this.timelineData, this.diffXML)
 		    }
 		  }

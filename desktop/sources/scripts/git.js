@@ -35,12 +35,7 @@ function diff({ dir, filepath }) {
 				if (i === 0) {
 					return [file, []]
 				} else {
-					const diff = JsDiff.structuredPatch(
-						`${filepath}-${i - 1}`,
-						`${filepath}-${i}`,
-						files[i - 1],
-						file,
-					)
+					const diff = JsDiff.diffLines(files[i - 1], file)
 					return [file, diff]
 				}
 			})
