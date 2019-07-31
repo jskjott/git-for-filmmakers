@@ -20,6 +20,7 @@
 		const vue = new Vue({
 		data: {
 		    diffXML: null,
+		    branchFile: null,
 		    timelineData: null,
 		    timeline: null,
 		    scale: null,
@@ -28,12 +29,13 @@
 		    parse: (data) => { 
 		    	return parser(data)
 		    },
-		    render: (data, diffXML, scale) => {
-		    	initRender(data, scale)
+		    render: (data, scale, branchFile, timeline) => {
+		    	const timelineHeights = initRender(data, scale)
+		    	renderTree(branchFile, timelineHeights)
 		    },
 		},
 		created: async function() {
-		    this.diffXML = await diff({dir:'../example_repo', filepath:'example.fcpxml', branch:'master'})
+		    [this.diffXML, this.branchFile] = await diff({dir:'../example_repo', filepath:'example.fcpxml', branch:'master'})
 		},
 		watch: {
 		    diffXML: function() {
@@ -43,7 +45,7 @@
 		      	})
 
 		      	this.scale = new Scale(this.timelineData)
-		      	this.render(this.timelineData, this.diffXML, this.scale)
+		      	this.render(this.timelineData, this.scale, this.branchFile, this.timelineData)
 		    }
 		  }
 		});

@@ -5,6 +5,11 @@
 	background-color: #1a161a;
 }
 
+*::-webkit-scrollbar { /* WebKit */
+    width: 0;
+    height: 0;
+}
+
 body { 
 	display: grid;
 	grid-template-columns: 400px 800px;

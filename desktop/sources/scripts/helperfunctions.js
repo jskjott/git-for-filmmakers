@@ -32,6 +32,6 @@ class Scale {
 		this.offsetScale = d3
 			.scaleLinear()
 			.domain(extent)
-			.range([25, 750])
+			.range([0, 750])
 	}
 }

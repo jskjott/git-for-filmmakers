@@ -7,9 +7,32 @@ const git = require('isomorphic-git')
 async function readBranchFile({ dir, fs }) {
 	const commitFiles = []
 
-	const log = await git.log({ fs: fs, dir: dir })
+	const repoContent = await fs.readdir(dir)
+	const xmlFileName = repoContent.filter(file => {
+		return file.match('.fcpxml')
+	})
+
+	const currentFileContent = await fs.readFile(
+		`${dir}/${xmlFileName}`,
+		'utf8',
+	)
+
+	commitFiles.push(currentFileContent)
+
+	const log = [
+		{
+			message: 'current',
+			author: {
+				timestamp: Date.now(),
+			},
+		},
+	]
+
+	const commitInfo = await git.log({ fs: fs, dir: dir })
+	log.push(...commitInfo)
+
 	const commits = await Promise.all(
-		log.map(commit => git.readObject({ fs, dir, oid: commit.tree })),
+		commitInfo.map(commit => git.readObject({ fs, dir, oid: commit.tree })),
 	)
 	const fileContents = await Promise.all(
 		commits.map(commit =>
@@ -19,10 +42,15 @@ async function readBranchFile({ dir, fs }) {
 
 	fileContents.forEach(file => commitFiles.push(file.object.toString('utf8')))
 
-	return commitFiles
+	const data = {
+		commits: commitFiles,
+		log,
+	}
+	return data
 }
 
 function diff({ dir, filepath }) {
+	let branchFile
 	let fname = dir + '/' + filepath
 	return fs
 		.readFile(fname)
@@ -30,7 +58,8 @@ function diff({ dir, filepath }) {
 			return Promise.all([newFile, readBranchFile({ fs, dir })])
 		})
 		.then(data => {
-			const files = data[1].reverse()
+			branchFile = data[1].log
+			const files = data[1].commits.reverse()
 			const diffArray = files.map((file, i) => {
 				if (i === 0) {
 					return [file, []]
@@ -40,6 +69,6 @@ function diff({ dir, filepath }) {
 				}
 			})
 
-			return diffArray
+			return [diffArray, branchFile]
 		})
 }
