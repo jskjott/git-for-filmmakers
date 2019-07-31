@@ -1,6 +1,17 @@
 const JsDiff = require('diff')
 const fs = require('fs').promises
 const git = require('isomorphic-git')
+const xmldom = require('xmldom')
+const c14n = require('xml-c14n')()
+
+const canonicaliser = c14n.createCanonicaliser(
+	'http://www.w3.org/2001/10/xml-exc-c14n#',
+)
+
+async function canonicalise(xmlData) {
+	const document = new xmldom.DOMParser().parseFromString(xmlData)
+	return await canonicaliser.canonicalise(document.documentElement)
+}
 
 // readBranchFile & diff inspired by https://github.com/isomorphic-git/isomorphic-git/issues/193
 
@@ -31,19 +42,23 @@ async function readBranchFile({ dir, fs }) {
 	const commitInfo = await git.log({ fs: fs, dir: dir })
 	log.push(...commitInfo)
 
-	const commits = await Promise.all(
+	const commitObjects = await Promise.all(
 		commitInfo.map(commit => git.readObject({ fs, dir, oid: commit.tree })),
 	)
 	const fileContents = await Promise.all(
-		commits.map(commit =>
+		commitObjects.map(commit =>
 			git.readObject({ fs, dir, oid: commit.object.entries[0].oid }),
 		),
 	)
 
 	fileContents.forEach(file => commitFiles.push(file.object.toString('utf8')))
 
+	const commits = await Promise.all(
+		commitFiles.map(commit => canonicalise(commit)),
+	)
+
 	const data = {
-		commits: commitFiles,
+		commits,
 		log,
 	}
 	return data
