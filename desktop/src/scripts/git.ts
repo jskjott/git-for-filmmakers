@@ -2,24 +2,25 @@ const JsDiff = require('diff')
 const fs = require('fs').promises
 const git = require('isomorphic-git')
 const xmldom = require('xmldom')
-const c14n = require('xml-c14n')()
+const c14n = require('xml-c14n')
 
-const canonicaliser = c14n.createCanonicaliser(
+let canonicaliser = new c14n()
+canonicaliser = canonicaliser.createCanonicaliser(
 	'http://www.w3.org/2001/10/xml-exc-c14n#',
 )
 
-async function canonicalise(xmlData) {
-	const document = new xmldom.DOMParser().parseFromString(xmlData)
-	return await canonicaliser.canonicalise(document.documentElement)
-}
+//export async function canonicalise(xmlData: string) {
+	//const document = new xmldoc.XmlDocument(xmlData)
+	//return await canonicaliser.canonicalise(document.documentElement)
+//}
 
 // readBranchFile & diff inspired by https://github.com/isomorphic-git/isomorphic-git/issues/193
 
-async function readBranchFile({ dir, fs }) {
+export async function readBranchFile({ dir, fs }) {
 	const commitFiles = []
 
 	const repoContent = await fs.readdir(dir)
-	const xmlFileName = repoContent.filter(file => {
+	const xmlFileName = repoContent.filter((file: string) => {
 		return file.match('.fcpxml')
 	})
 
@@ -42,8 +43,13 @@ async function readBranchFile({ dir, fs }) {
 	const commitInfo = await git.log({ fs: fs, dir: dir })
 	log.push(...commitInfo)
 
+	console.log(commitInfo)
+	interface Commit {}
+
 	const commitObjects = await Promise.all(
-		commitInfo.map(commit => git.readObject({ fs, dir, oid: commit.tree })),
+		commitInfo.map((commit: object) =>
+			git.readObject({ fs, dir, oid: commit.tree }),
+		),
 	)
 	const fileContents = await Promise.all(
 		commitObjects.map(commit =>
@@ -54,7 +60,10 @@ async function readBranchFile({ dir, fs }) {
 	fileContents.forEach(file => commitFiles.push(file.object.toString('utf8')))
 
 	const commits = await Promise.all(
-		commitFiles.map(commit => canonicalise(commit)),
+		commitFiles.map(commit => {
+			//canonicalise(commit)
+			return commit
+		}),
 	)
 
 	const data = {
@@ -64,15 +73,15 @@ async function readBranchFile({ dir, fs }) {
 	return data
 }
 
-function diff({ dir, filepath }) {
+export function diff({ dir, filepath }) {
 	let branchFile
-	let fname = dir + '/' + filepath
+	const fname = dir + '/' + filepath
 	return fs
 		.readFile(fname)
-		.then(function(newFile) {
+		.then(function(newFile: string) {
 			return Promise.all([newFile, readBranchFile({ fs, dir })])
 		})
-		.then(data => {
+		.then((data) => {
 			branchFile = data[1].log
 			const files = data[1].commits.reverse()
 			const diffArray = files.map((file, i) => {

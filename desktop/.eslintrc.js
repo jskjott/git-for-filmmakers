@@ -1,37 +1,29 @@
 module.exports = {
-    "env": {
-        "browser": true,
-        "commonjs": true,
-        "es6": true
+    'env': {
+        'browser': true,
+        'es6': true,
+        'node': true,
     },
-    "extends": [
-        "eslint:recommended",
-        'plugin:prettier/recommended'
+    "parser": "vue-eslint-parser",
+    'extends': [
+        'eslint:recommended',
+        'plugin:vue/base',
+        'plugin:@typescript-eslint/eslint-recommended',
+        'plugin:@typescript-eslint/recommended',
+        'prettier/@typescript-eslint',
+        'plugin:prettier/recommended',
     ],
-    "globals": {
-        "Atomics": "readonly",
-        "SharedArrayBuffer": "readonly"
+    'globals': {
+        'Atomics': 'readonly',
+        'SharedArrayBuffer': 'readonly',
     },
-    "parserOptions": {
-        "ecmaVersion": 2018
+    'parserOptions': {
+        'parser': '@typescript-eslint/parser',
+        //'project': './tsconfig.json',
     },
-    "rules": {
-        "indent": [
-            "error",
-            "tab"
-        ],
-        "semi": [
-            "error",
-            "never"
-        ],
-        'linebreak-style': [
-            'error',
-            'unix'
-        ],
-        'quotes': [
-            'error',
-            'single'
-        ],
+    'rules': {
+        'linebreak-style': ['error', 'unix'],
+        'quotes': ['error', 'single'],
         'no-console': 0,
         'no-unused-vars': 1,
         'no-empty': 1,
@@ -55,6 +47,17 @@ module.exports = {
         'no-multi-spaces': 1,
         'no-trailing-spaces': 1,
         'prettier/prettier': 1,
-        'eqeqeq': 1
-    }
-};
+        'eqeqeq': 1,
+        '@typescript-eslint/no-var-requires': 0,
+        '@typescript-eslint/no-explicit-any': 0,
+        '@typescript-eslint/explicit-function-return-type': 0,
+        'vue/order-in-components': 0,
+        'vue/max-attributes-per-line': [2, {
+              'singleline': 2,
+              'multiline': {
+                'max': 2,
+                'allowFirstLine': false
+              }
+        }]
+    },
+}

@@ -1,5 +1,15 @@
 const { app, BrowserWindow } = require('electron')
+
 let win = null
+let url
+
+//if (process.env.NODE_ENV === 'DEV') {
+//url = 'http://localhost:8089/'
+//} else {
+//url = '/dist/index.html'
+//}
+
+url = 'http://localhost:3000/'
 
 app.on('ready', () => {
 	win = new BrowserWindow({
@@ -17,9 +27,13 @@ app.on('ready', () => {
 	})
 
 	win.webContents.openDevTools()
-	win.loadFile('sources/index.html')
+	win.loadURL(url)
 	win.on('closed', function() {
 		win = null
+	})
+
+	win.once('ready-to-show', () => {
+		win.show()
 	})
 })
 

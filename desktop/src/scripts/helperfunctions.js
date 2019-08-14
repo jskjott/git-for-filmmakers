@@ -1,6 +1,10 @@
-class Scale {
-	constructor(data) {
-		const flattenedData = data.flatMap(commit => commit)
+import * as d3 from 'd3'
+
+export default class Scale {
+	constructor(state) {
+		const flattenedData = Object.values(state).flatMap(
+			commit => commit.timelineElements,
+		)
 
 		const lane0 = flattenedData.filter(d => d.lane === 0)
 		this.lane0Transform = d3.min(lane0, d => {
