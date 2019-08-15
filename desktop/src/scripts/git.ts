@@ -16,7 +16,31 @@ canonicaliser = canonicaliser.createCanonicaliser(
 
 // readBranchFile & diff inspired by https://github.com/isomorphic-git/isomorphic-git/issues/193
 
-export async function readBranchFile({ dir, fs }) {
+interface RB {
+	dir: string
+	fs: any
+}
+
+export interface Commit {
+	author: {
+		email: string
+		name: string
+		timestamp: number
+		timezoneOffset: number
+	}
+	committer: {
+		email: string
+		name: string
+		timestamp: number
+		timezoneOffset: number
+	}
+	message: string
+	oid: string
+	parent: string[]
+	tree: string
+}
+
+export async function readBranchFile({ dir, fs }: RB) {
 	const commitFiles = []
 
 	const repoContent = await fs.readdir(dir)
@@ -40,24 +64,39 @@ export async function readBranchFile({ dir, fs }) {
 		},
 	]
 
-	const commitInfo = await git.log({ fs: fs, dir: dir })
+	const commitInfo: Commit[] = await git.log({ fs, dir })
 	log.push(...commitInfo)
 
-	console.log(commitInfo)
-	interface Commit {}
+	interface Entry {
+		mode: number
+		path: number
+		oid: number
+		type: number
+	}
 
-	const commitObjects = await Promise.all(
-		commitInfo.map((commit: object) =>
+	interface File {
+		format: string
+		object: {
+			entries: Entry[]
+		}
+		oid: string
+		source: string
+		type: string
+	}
+
+	const commitObjects: File[] = await Promise.all(
+		commitInfo.map(commit =>
 			git.readObject({ fs, dir, oid: commit.tree }),
 		),
 	)
-	const fileContents = await Promise.all(
-		commitObjects.map(commit =>
+
+	const fileContents: File[] = await Promise.all(
+		commitObjects.map((commit) =>
 			git.readObject({ fs, dir, oid: commit.object.entries[0].oid }),
 		),
 	)
 
-	fileContents.forEach(file => commitFiles.push(file.object.toString('utf8')))
+	fileContents.forEach((file) => commitFiles.push(file.object.toString()))
 
 	const commits = await Promise.all(
 		commitFiles.map(commit => {
@@ -73,7 +112,12 @@ export async function readBranchFile({ dir, fs }) {
 	return data
 }
 
-export function diff({ dir, filepath }) {
+interface DiffInput{
+	dir: string
+	filepath: string
+}
+
+export function diff({ dir, filepath }: DiffInput) {
 	let branchFile
 	const fname = dir + '/' + filepath
 	return fs
@@ -81,10 +125,10 @@ export function diff({ dir, filepath }) {
 		.then(function(newFile: string) {
 			return Promise.all([newFile, readBranchFile({ fs, dir })])
 		})
-		.then((data) => {
+		.then((data: any) => {
 			branchFile = data[1].log
 			const files = data[1].commits.reverse()
-			const diffArray = files.map((file, i) => {
+			const diffArray = files.map((file:string, i:number) => {
 				if (i === 0) {
 					return [file, []]
 				} else {

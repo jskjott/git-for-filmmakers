@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "NODE_ENV=DEV vue-cli-service serve '--port' '3000' & sleep 10 && NODE_ENV=DEV electron src/app.js",
+    "start": "vue-cli-service serve '--port' '3000' & sleep 10 && electron src/app.js",
     "build": "vue-cli-service build",
-    "lint": "node_modules/.bin/eslint src --ext .js,.vue,.ts --fix"
+    "lint": "node_modules/.bin/eslint src --ext .js,.vue --fix"
   },
   "dependencies": {
     "d3": "^5.9.7",
@@ -15,6 +15,8 @@
     "xmldom": "^0.1.27"
   },
   "devDependencies": {
+    "@types/d3": "^5.7.2",
+    "@types/node": "^7.0.5",
     "@vue/cli-plugin-eslint": "^3.10.0",
     "@vue/cli-plugin-typescript": "^3.10.0",
     "@vue/cli-service": "^3.10.0",

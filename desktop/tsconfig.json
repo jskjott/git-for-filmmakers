@@ -1,9 +1,16 @@
 {
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.vue",
+  ],
   "compilerOptions": {
     "target": "ESNext",
     "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "typeRoots": [
+      "./node_modules/@types"
+    ]
   }
 }

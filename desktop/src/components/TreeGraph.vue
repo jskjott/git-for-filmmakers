@@ -6,7 +6,7 @@
 			:cx="d.cx"
 			:cy="d.cy"
 			:r="d.r"
-			:class="d.class"
+			:class="d.classIndicator"
 		/>
 		<line
 			v-for="d in lines"
@@ -22,7 +22,7 @@
 			:y="d.y"
 			:dy="d.dy"
 			:dx="d.dx"
-			:class="d.class"
+			:class="d.classIndicator"
 		>
 			{{ d.text }}
 		</text>
@@ -31,11 +31,42 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { State } from '../App.vue'
 
 const width = 400
 const blockHeight = 50
 const interMargin = 5
 const outerMargin = 40
+const circleRadius = 10
+
+interface Line {
+	x1: number
+	y1: number
+	x2: number
+	y2: number
+	stroke: string
+}
+
+interface Circle {
+	cx: number
+	cy: number
+	r: number
+	classIndicator: string
+}
+
+interface Text {
+	x: number
+	y: number
+	dy: string
+	dx: string
+	text: string
+	classIndicator: string
+}
+
+const lines: Line[] = []
+const circles: Circle[] = []
+const text: Text[] = []
+const height = 0
 
 export default Vue.extend({
 	name: 'TreeGraph',
@@ -45,16 +76,16 @@ export default Vue.extend({
 	data() {
 		return {
 			width,
-			height: 0,
-			lines: [],
-			circles: [],
-			text: [],
+			height,
+			lines,
+			circles,
+			text,
 		}
 	},
 	watch: {
 		state: function() {
 			if (this.state) {
-				const commits = Object.values(this.state)
+				const commits: State[] = Object.values(this.state)
 
 				commits.sort((a, b) => {
 					return (
@@ -81,6 +112,8 @@ export default Vue.extend({
 				let cumulative = 0
 
 				commits.reverse().forEach((commit, i) => {
+					const x1 = width / 2
+					const x2 = width / 2
 					const y1 = i === 0 ? 75 : cumulative
 					const y2 =
 						i === timelineHeights.length - 1
@@ -89,31 +122,37 @@ export default Vue.extend({
 					const stroke = 'silver'
 
 					this.lines.push({
-						x1: 150,
+						x1,
 						y1,
-						x2: 150,
+						x2,
 						y2,
 						stroke,
 					})
 
+					const cx = width / 2
 					const cy = cumulative + timelineHeights[i] / 2
+					const r = circleRadius
+					const classIndicator = 'graphText'
 
 					this.circles.push({
-						cx: 150,
+						cx,
 						cy,
-						r: 10,
-						class: 'graphText',
+						r,
+						classIndicator,
 					})
 
+					const x = width / 2
 					const text = commit.logInfo.message
+					const dy = '.30em'
+					const dx = '2em'
 
 					this.text.push({
-						x: 150,
+						x,
 						y: cy,
-						dy: '.30em',
-						dx: '2em',
+						dy,
+						dx,
 						text,
-						class: 'graphText',
+						classIndicator,
 					})
 
 					cumulative = cumulative + timelineHeights[i]
