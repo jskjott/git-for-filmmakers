@@ -1,6 +1,8 @@
 <template>
 	<div id="app">
-		<div id="header"></div>
+		<div id="header">
+			<Menu @selectRepo="selectRepo" v-bind="{ currentRepo }"></Menu>
+		</div>
 		<div id="visualisation">
 			<div id="graph">
 				<TreeGraph v-bind="{ state }"> </TreeGraph>
@@ -17,10 +19,12 @@
 <script lang="ts">
 import Vue from 'vue'
 import * as d3 from 'd3'
+const { dialog } = window.require('electron').remote
 
 import { diff, Commit } from './scripts/git'
 import Timeline from './components/Timeline.vue'
 import TreeGraph from './components/TreeGraph.vue'
+import Menu from './components/Menu.vue'
 
 const parseTime = (timeString: string) => {
 	const vals = timeString.split('/')
@@ -110,24 +114,38 @@ interface Hunk {
 	removed?: boolean | undefined
 }
 
+interface SelectedRepo {
+	cancelled: boolean | undefined
+	filePaths: string[]
+}
+
+let currentRepo: { dir: string; file: string }
 let state: { [oid: string]: State }
 let scale: Scale
 let orderedCommits: State[]
 
-export default Vue.extend({
+const vue = Vue.extend({
 	name: 'app',
 	components: {
 		TreeGraph,
 		Timeline,
+		Menu,
 	},
 	data() {
 		return {
+			currentRepo,
 			state,
 			orderedCommits,
 			scale,
 		}
 	},
 	watch: {
+		currentRepo: {
+			handler: function() {
+				this.initRepo(this.currentRepo)
+			},
+			deep: true,
+		},
 		state: {
 			handler: function() {
 				this.scale = new Scale(this.state)
@@ -135,37 +153,57 @@ export default Vue.extend({
 			deep: true,
 		},
 	},
-	async created() {
-		const state: { [oid: string]: State } = {}
-		const [sourcefiles, commitLogs] = await diff({
-			dir: '../example_repo',
-			filepath: 'example.fcpxml',
-		})
-		commitLogs.forEach((log: Commit, i: number) => {
-			const timelineElements = this.parseText(sourcefiles[i][0])
-			timelineElements.push(...this.parseDiff(sourcefiles[i]))
-			const laneNumber =
-				Math.max(
-					...timelineElements.map((ele: TimelineElement) => ele.lane),
-				) + 1
-
-			state[log.oid || log.message] = {
-				sourceFile: sourcefiles[i],
-				logInfo: log,
-				timelineElements,
-				laneNumber,
-			}
-		})
-
-		const commits: State[] = Object.values(state)
-		commits.sort((a, b) => {
-			return a.logInfo.author.timestamp - b.logInfo.author.timestamp
-		})
-
-		this.state = state
-		this.orderedCommits = commits
-	},
 	methods: {
+		initRepo: async function({ dir, file }: { dir: string; file: string }) {
+			const state: { [oid: string]: State } = {}
+			const [sourcefiles, commitLogs] = await diff({
+				dir: '../example_repo',
+				filepath: 'example.fcpxml',
+			})
+			commitLogs.forEach((log: Commit, i: number) => {
+				const timelineElements = this.parseText(sourcefiles[i][0])
+				timelineElements.push(...this.parseDiff(sourcefiles[i]))
+				const laneNumber =
+					Math.max(
+						...timelineElements.map(
+							(ele: TimelineElement) => ele.lane,
+						),
+					) + 1
+
+				state[log.oid || log.message] = {
+					sourceFile: sourcefiles[i],
+					logInfo: log,
+					timelineElements,
+					laneNumber,
+				}
+			})
+
+			const commits: State[] = Object.values(state)
+			commits.sort((a, b) => {
+				return a.logInfo.author.timestamp - b.logInfo.author.timestamp
+			})
+
+			this.state = state
+			this.orderedCommits = commits
+		},
+		selectRepo: async function() {
+			const options = {
+				properties: ['openFile'],
+				filters: [{ name: 'XML Project File', extensions: ['fcpxml'] }],
+			}
+
+			const selectedRepo: SelectedRepo = await dialog
+				.showOpenDialog(options)
+				.then((result: SelectedRepo) => result)
+			if (!selectedRepo.cancelled) {
+				const elements = selectedRepo.filePaths[0].split('/')
+				const dir = elements.slice(0, -1).join('/')
+				const file = elements.pop()
+				if (file !== undefined) {
+					this.currentRepo = { dir, file }
+				}
+			}
+		},
 		parseText: (sourceText: string) => {
 			const offsetReg = /(?:^|\s)offset="(.*?)s/
 			const durationReg = /(?:^|\s)duration="(.*?)s/
@@ -190,7 +228,7 @@ export default Vue.extend({
 							offset: parseTime(offset![1]),
 							duration: parseTime(duration![1]),
 							lane,
-							color: 'dimgrey',
+							color: '#717171',
 						})
 					}
 				})
@@ -328,12 +366,38 @@ export default Vue.extend({
 		},
 	},
 })
+
+export default vue
 </script>
 
 <style>
+@font-face {
+	font-family: 'titillium_webbold';
+	src: url('assets/titilliumweb-bold-webfont.woff2') format('woff2'),
+		url('assets/titilliumweb-bold-webfont.woff') format('woff');
+	font-weight: normal;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'open_sansregular';
+	src: url('assets/opensans-regular-webfont.woff2') format('woff2'),
+		url('assets/opensans-regular-webfont.woff') format('woff');
+	font-weight: normal;
+	font-style: normal;
+}
+
+h3,
+h2,
+h1 {
+	font-family: 'titillium_webbold';
+	margin-bottom: 1rem;
+}
+
 * {
 	margin: 0;
 	background-color: #1a161a;
+	font-family: 'open_sansregular';
 }
 
 *::-webkit-scrollbar {
@@ -345,9 +409,8 @@ export default Vue.extend({
 body {
 }
 
-h1,
-h2,
 p {
+	font-family: 'open_sansregular';
 	margin-bottom: 1rem;
 }
 
@@ -373,7 +436,7 @@ svg {
 
 #graph {
 	border-right: solid 5px;
-	background-color: #1f191f;
+	background-color: #1d1d1d;
 }
 
 #timeline {

@@ -26,6 +26,17 @@
 		>
 			{{ d.text }}
 		</text>
+
+		<text
+			v-for="d in committers"
+			:x="d.x"
+			:y="d.y"
+			:dy="d.dy"
+			:dx="d.dx"
+			:class="d.classIndicator"
+		>
+			{{ d.text }}
+		</text>
 	</svg>
 </template>
 
@@ -66,6 +77,7 @@ interface Text {
 const lines: Line[] = []
 const circles: Circle[] = []
 const text: Text[] = []
+const committers: Text[] = []
 const height = 0
 
 export default Vue.extend({
@@ -80,6 +92,7 @@ export default Vue.extend({
 			lines,
 			circles,
 			text,
+			committers,
 		}
 	},
 	watch: {
@@ -112,8 +125,8 @@ export default Vue.extend({
 				let cumulative = 0
 
 				commits.reverse().forEach((commit, i) => {
-					const x1 = width / 2
-					const x2 = width / 2
+					const x1 = width / 2.5
+					const x2 = width / 2.5
 					const y1 = i === 0 ? 75 : cumulative
 					const y2 =
 						i === timelineHeights.length - 1
@@ -129,7 +142,7 @@ export default Vue.extend({
 						stroke,
 					})
 
-					const cx = width / 2
+					const cx = width / 2.5
 					const cy = cumulative + timelineHeights[i] / 2
 					const r = circleRadius
 					const classIndicator = 'graphText'
@@ -141,7 +154,7 @@ export default Vue.extend({
 						classIndicator,
 					})
 
-					const x = width / 2
+					const x = width / 2.5
 					const text = commit.logInfo.message
 					const dy = '.30em'
 					const dx = '2em'
@@ -155,6 +168,21 @@ export default Vue.extend({
 						classIndicator,
 					})
 
+					const committer = commit.logInfo.author.name
+						? commit.logInfo.author.name
+						: ''
+					const leftTransform = 120
+					const authorClass = 'author'
+
+					this.committers.push({
+						x: x - leftTransform,
+						y: cy,
+						dy,
+						dx,
+						text: committer,
+						classIndicator: authorClass,
+					})
+
 					cumulative = cumulative + timelineHeights[i]
 				})
 			}
@@ -164,7 +192,15 @@ export default Vue.extend({
 </script>
 
 <style scoped>
+.TreeGraph {
+	background-color: #1d1d1d;
+}
+
 .graphText {
 	fill: silver;
+}
+
+.author {
+	fill: #525252;
 }
 </style>

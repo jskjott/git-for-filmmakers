@@ -7,7 +7,7 @@
 			y1="0"
 			:x2="scale.offsetScale(step)"
 			:y2="height"
-			stroke="silver"
+			stroke="#333333"
 		/>
 
 		<rect
@@ -95,3 +95,9 @@ const vue = Vue.extend({
 
 export default vue
 </script>
+
+<style scoped="">
+.Timeline {
+	background-color: #1d1d1d;
+}
+</style>

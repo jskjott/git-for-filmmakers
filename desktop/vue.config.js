@@ -3,7 +3,8 @@ module.exports = {
 	configureWebpack: {
 		externals:{
         	fs:    "commonjs fs",
-        	path:  "commonjs path"
-    	}
-  	},
+        	path:  "commonjs path",
+        	electron: 'electron'
+    	},
+  	}
 }
