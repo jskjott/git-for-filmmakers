@@ -100,4 +100,9 @@ export default vue
 .Timeline {
 	background-color: #1d1d1d;
 }
+
+rect {
+	stroke: black;
+	stroke-width: 1;
+}
 </style>

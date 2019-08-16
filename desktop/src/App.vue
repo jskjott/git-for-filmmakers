@@ -154,11 +154,11 @@ const vue = Vue.extend({
 		},
 	},
 	methods: {
-		initRepo: async function({ dir, file }: { dir: string; file: string }) {
+		initRepo: async function(repoPath: { dir: string; file: string }) {
 			const state: { [oid: string]: State } = {}
 			const [sourcefiles, commitLogs] = await diff({
-				dir: '../example_repo',
-				filepath: 'example.fcpxml',
+				dir: repoPath.dir,
+				path: repoPath.file
 			})
 			commitLogs.forEach((log: Commit, i: number) => {
 				const timelineElements = this.parseText(sourcefiles[i][0])
@@ -261,6 +261,7 @@ const vue = Vue.extend({
 					commit.forEach(hunk => {
 						let allSame = true
 						let assetClips: [string, boolean][] = []
+						let assetClipCount: number = 0
 						hunk.forEach((line: Hunk) => {
 							if (line.added === undefined) {
 								line.added = false
@@ -270,8 +271,10 @@ const vue = Vue.extend({
 								typeof line.added === 'boolean'
 							) {
 								assetClips.push([line.value, line!.added])
+								assetClipCount ++
 							}
-							if (line.added !== hunk[0].added) {
+
+							if (line.added !== hunk[0].added && assetClipCount > 1) {
 								allSame = false
 							}
 						})
@@ -396,7 +399,7 @@ h1 {
 
 * {
 	margin: 0;
-	background-color: #1a161a;
+	background-color: #1d1d1d;
 	font-family: 'open_sansregular';
 }
 

@@ -134,12 +134,12 @@ export async function readBranchFile({ dir, fs }: RB) {
 
 interface DiffInput{
 	dir: string
-	filepath: string
+	path: string
 }
 
-export function diff({ dir, filepath }: DiffInput) {
+export function diff({ dir, path }: DiffInput) {
 	let branchFile
-	const fname = dir + '/' + filepath
+	const fname = dir + '/' + path
 	return fs
 		.readFile(fname)
 		.then(function(newFile: string) {

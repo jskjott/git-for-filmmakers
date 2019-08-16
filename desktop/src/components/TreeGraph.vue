@@ -98,6 +98,7 @@ export default Vue.extend({
 	watch: {
 		state: function() {
 			if (this.state) {
+
 				const commits: State[] = Object.values(this.state)
 
 				commits.sort((a, b) => {
