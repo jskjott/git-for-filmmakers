@@ -19,6 +19,7 @@
 			:height="d.height"
 			:fill="d.fill"
 			:stroke="d.fill"
+			fill-opacity=".75"
 		/>
 	</svg>
 </template>
@@ -57,21 +58,16 @@ const vue = Vue.extend({
 		}
 	},
 	mounted() {
-		const laneNumber =
-			this.commit.timelineElements.reduce(
-				(max: number, val: TimelineElement) =>
-					val.lane > max ? val.lane : max,
-				this.commit.timelineElements[0].lane,
-			) + 1
-
 		this.blocks = []
 
-		this.height = outerMargin + laneNumber * blockHeight + interMargin
+		this.height =
+			outerMargin + this.commit.laneNumber * blockHeight + interMargin
 
 		this.commit.timelineElements.forEach((block: TimelineElement) => {
 			const x = this.scale.offsetScale(
 				block.lane === 0 ? block.offset - this.scale.min : block.offset,
 			)
+			console.log(block.offset, block, block.lane)
 			const y =
 				this.height -
 				(75 +
@@ -81,7 +77,6 @@ const vue = Vue.extend({
 			const width = this.scale.offsetScale(block.duration)
 			const height = blockHeight
 			const fill = block.color
-
 			this.blocks.push({
 				x,
 				y,
@@ -90,6 +85,40 @@ const vue = Vue.extend({
 				fill,
 			})
 		})
+	},
+	watch: {
+		commit: function() {
+			this.$forceUpdate()
+
+			this.blocks = []
+
+			this.height =
+				outerMargin + this.commit.laneNumber * blockHeight + interMargin
+
+			this.commit.timelineElements.forEach((block: TimelineElement) => {
+				const x = this.scale.offsetScale(
+					block.lane === 0
+						? block.offset - this.scale.min
+						: block.offset,
+				)
+				const y =
+					this.height -
+					(75 +
+						(block.lane
+							? block.lane * (blockHeight + interMargin)
+							: interMargin / 2))
+				const width = this.scale.offsetScale(block.duration)
+				const height = blockHeight
+				const fill = block.color
+				this.blocks.push({
+					x,
+					y,
+					width,
+					height,
+					fill,
+				})
+			})
+		},
 	},
 })
 

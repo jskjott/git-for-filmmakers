@@ -2,35 +2,28 @@ const JsDiff = require('diff')
 const fs = require('fs').promises
 const fss = require('fs')
 const git = require('isomorphic-git')
-const xmldom = require('xmldom')
-const signedXml = require('xml-crypto').SignedXml
 const path = require('path');
 
-const key = `-----BEGIN PRIVATE KEY-----
-MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAL4vpoH3H3byehjj
-7RAGxefGRATiq4mXtzc9Q91W7uT0DTaFEbjzVch9aGsNjmLs4QHsoZbuoUmi0st4
-x5z9SQpTAKC/dW8muzacT3E7dJJYh03MAO6RiH4LG34VRTq1SQN6qDt2rCK85eG4
-5NHI4jceptZNu6Zot1zyO5/PYuFpAgMBAAECgYAhspeyF3M/xB7WIixy1oBiXMLY
-isESFAumgfhwU2LotkVRD6rgNl1QtMe3kCNWa9pCWQcYkxeI0IzA+JmFu2shVvoR
-oL7eV4VCe1Af33z24E46+cY5grxNhHt/LyCnZKcitvCcrzXExUc5n6KngX0mMKgk
-W7skZDwsnKzhyUV8wQJBAN2bQMeASQVOqdfqBdFgC/NPnKY2cuDi6h659QN1l+kg
-X3ywdZ7KKftJo1G9l45SN9YpkyEd9zEO6PMFaufJvZUCQQDbtAWxk0i8BT3UTNWC
-T/9bUQROPcGZagwwnRFByX7gpmfkf1ImIvbWVXSpX68/IjbjSkTw1nj/Yj1NwFZ0
-nxeFAkEAzPhRpXVBlPgaXkvlz7AfvY+wW4hXHyyi0YK8XdPBi25XA5SPZiylQfjt
-Z6iN6qSfYqYXoPT/c0/QJR+orvVJNQJBANhRPNXljVTK2GDCseoXd/ZiI5ohxg+W
-UaA/1fDvQsRQM7TQA4NXI7BO/YmSk4rW1jIeOxjiIspY4MFAIh+7UL0CQFL6zTg6
-wfeMlEZzvgqwCGoLuvTnqtvyg45z7pfcrg2cHdgCXIy9kErcjwGiu6BOevEA1qTW
-Rk+bv0tknWvcz/s=
------END PRIVATE KEY-----`
+const DOMParser = require('xmldom').DOMParser
+const XMLSerializer = require('xmldom').XMLSerializer
 
-function signXml(xml: string, xpath: string)
-{
-  const sig = new signedXml()
-  sig.signingKey = key
-  sig.canonicalizationAlgorithm = "http://www.w3.org/2001/10/xml-exc-c14n#"
-  sig.addReference(xpath, ['http://www.w3.org/2001/10/xml-exc-c14n#'])
-  const computed = sig.computeSignature(xml)
-  return(sig.getOriginalXmlWithIds())
+const parseTime = (timeString: string) => {
+	const vals = timeString.split('/')
+	let secondTiming
+	if (vals.length === 1) {
+		secondTiming = parseFloat(vals[0])
+	} else {
+		secondTiming = parseFloat(vals[0]) / parseFloat(vals[1])
+	}
+	return secondTiming
+}
+
+function sortTags(xml: string){
+	const lines = xml.split('\n')
+
+	const sortedLines = lines.map(line => line.split(' ').sort().join(' '))
+
+	return (sortedLines.join('\n'))
 }
 
 // readBranchFile & diff inspired by https://github.com/isomorphic-git/isomorphic-git/issues/193
@@ -57,6 +50,23 @@ export interface Commit {
 	oid: string
 	parent: string[]
 	tree: string
+}
+
+export async function checkCurrent({ dir, fs }: RB) {
+
+	const repoContent = await fs.readdir(dir)
+	const xmlFileName = repoContent.filter((file: string) => {
+		return file.match('.fcpxml')
+	})
+
+	const file = await fs.readFile(
+		`${dir}/${xmlFileName}`,
+		'utf8',
+	)
+
+	const processedFile = process([file])
+	
+	return(processedFile)
 }
 
 export async function readBranchFile({ dir, fs }: RB) {
@@ -119,8 +129,7 @@ export async function readBranchFile({ dir, fs }: RB) {
 
 	const commits = await Promise.all(
 		commitFiles.map(commit => {
-			const signed = signXml(commit, 
-  "//*[local-name(.)='library']")
+			const transformed = sortTags(commit)
 			return commit
 		}),
 	)
@@ -148,15 +157,89 @@ export function diff({ dir, path }: DiffInput) {
 		.then((data: any) => {
 			branchFile = data[1].log
 			const files = data[1].commits.reverse()
-			const diffArray = files.map((file:string, i:number) => {
+
+			const processed = process(files)
+
+			const diffArray = processed.map((file:string, i:number) => {
 				if (i === 0) {
 					return [file, []]
 				} else {
-					const diff = JsDiff.diffLines(files[i - 1], file)
+					const diff = JsDiff.diffLines(processed[i - 1], file)
 					return [file, diff]
 				}
 			})
-
 			return [diffArray, branchFile]
 		})
+}
+
+function process(files: string[]){
+
+	let processedFile: string[] = []
+
+	files.map(file => {
+		const assets = []
+
+		const doc = new DOMParser().parseFromString(file)
+		const assetClips = doc.getElementsByTagName('asset-clip')
+		const gaps = doc.getElementsByTagName('gap')
+
+		let gapTransforms: {lineNumber: number, gapOffset: string}[] = []
+
+		for (var i = 0; gaps.length > i; i++) {
+			const gapOffset = gaps.item(i).attributes.getNamedItem('offset').value
+			const lineNumber = gaps.item(i).lineNumber
+
+			const gap = {
+				lineNumber,
+				gapOffset
+			}
+			gapTransforms.push(gap)
+		}
+
+		for (var i = 0; assetClips.length > i; i++) {
+
+			const clip = assetClips.item(i)
+
+			const lineNumber = clip.lineNumber
+
+			let gapTransform: number = 0
+
+			gapTransforms.forEach((ele, i) => {
+
+				const nextExists = i+1 < gapTransforms.length
+
+				if (ele.lineNumber < lineNumber) {
+					 if (nextExists && lineNumber < gapTransforms[i+1].lineNumber || !nextExists ){
+					 	gapTransform = parseTime(ele.gapOffset) - 3600
+					 }
+				}
+			})
+
+			const nodeOffset = clip.attributes.getNamedItem('offset').value
+
+			const offset = doc.createAttribute("offset")
+			
+			if (clip.attributes.getNamedItem('lane') && clip.parentNode.tagName !== 'asset-clip') {
+				offset.value = (parseTime(nodeOffset) + gapTransform).toString()
+				assetClips.item(i).attributes.setNamedItem(offset)
+			}
+			
+			assets.push(assetClips.item(i))
+			
+		}
+
+		assets.map(clip => {
+			if (clip.hasChildNodes()) {
+			 	while (clip.hasChildNodes()) {
+			 		clip.removeChild(clip.firstChild)
+			 	}
+			 }
+
+			return (new XMLSerializer().serializeToString(assetClips.item(i)))
+		})
+
+		processedFile.push(assets.join('\n'))
+	})
+
+	return(processedFile)
 }

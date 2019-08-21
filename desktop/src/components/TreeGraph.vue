@@ -97,8 +97,14 @@ export default Vue.extend({
 	},
 	watch: {
 		state: function() {
-			if (this.state) {
+			this.lines = []
+			this.circles = []
+			this.text = []
+			this.committers = []
 
+			this.$forceUpdate()
+
+			if (this.state) {
 				const commits: State[] = Object.values(this.state)
 
 				commits.sort((a, b) => {
@@ -108,17 +114,12 @@ export default Vue.extend({
 				})
 
 				const timelineHeights = commits
-					.map(commit => {
-						const laneNumber =
-							commit.timelineElements.reduce(
-								(max, val) => (val.lane > max ? val.lane : max),
-								0,
-							) + 1
-
-						return (
-							outerMargin + laneNumber * blockHeight + interMargin
-						)
-					})
+					.map(
+						commit =>
+							outerMargin +
+							commit.laneNumber * blockHeight +
+							interMargin,
+					)
 					.reverse()
 
 				this.height = timelineHeights.reduce((acc, cur) => acc + cur, 0)
@@ -128,7 +129,7 @@ export default Vue.extend({
 				commits.reverse().forEach((commit, i) => {
 					const x1 = width / 2.5
 					const x2 = width / 2.5
-					const y1 = i === 0 ? 75 : cumulative
+					const y1 = i === 0 ? timelineHeights[i] / 2 : cumulative
 					const y2 =
 						i === timelineHeights.length - 1
 							? cumulative + timelineHeights[i] / 2

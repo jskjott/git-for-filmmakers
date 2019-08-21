@@ -19,29 +19,49 @@
 <script lang="ts">
 import Vue from 'vue'
 import * as d3 from 'd3'
-const { dialog } = window.require('electron').remote
+const fss = require('fs')
 
 import { diff, Commit } from './scripts/git'
 import Timeline from './components/Timeline.vue'
 import TreeGraph from './components/TreeGraph.vue'
 import Menu from './components/Menu.vue'
 
-const parseTime = (timeString: string) => {
-	const vals = timeString.split('/')
-	let secondTiming
-	if (vals.length === 1) {
-		secondTiming = parseFloat(vals[0])
-	} else {
-		secondTiming = parseFloat(vals[0]) / parseFloat(vals[1])
+declare global {
+	interface Window {
+		require: any
 	}
+}
+const { dialog } = window.require('electron').remote
+
+const parseTime = (timeString: string) => {
+	let secondTiming
+
+	if (timeString.match('/')) {
+		const vals = timeString.split('/')
+
+		if (vals.length === 1) {
+			secondTiming = parseFloat(vals[0])
+		} else {
+			secondTiming = parseFloat(vals[0]) / parseFloat(vals[1])
+		}
+	} else {
+		secondTiming = parseFloat(timeString)
+	}
+
 	return secondTiming
+}
+
+function roundTo2(num: number) {
+	return +num.toFixed(2)
 }
 
 export interface TimelineElement {
 	offset: number
 	duration: number
 	lane: number
+	start: number
 	color: string
+	id?: string
 }
 
 class Scale {
@@ -54,7 +74,6 @@ class Scale {
 		const flattenedData: TimelineElement[] = Object.values(state).flatMap(
 			commit => commit.timelineElements,
 		)
-
 		const lane0 = flattenedData.filter(d => d!.lane === 0)
 		this.lane0Transform = lane0.reduce(
 			(min, val) => (val.offset < min ? val.offset : min),
@@ -64,7 +83,9 @@ class Scale {
 		flattenedData.map(
 			d =>
 				(d.offset =
-					d.lane === 0 ? d.offset - this.lane0Transform : d.offset),
+					d.offset >= this.lane0Transform
+						? d.offset - this.lane0Transform
+						: d.offset),
 		)
 
 		this.min = flattenedData.reduce(
@@ -143,6 +164,7 @@ const vue = Vue.extend({
 		currentRepo: {
 			handler: function() {
 				this.initRepo(this.currentRepo)
+				this.$forceUpdate()
 			},
 			deep: true,
 		},
@@ -153,22 +175,18 @@ const vue = Vue.extend({
 			deep: true,
 		},
 	},
+	mounted() {},
 	methods: {
 		initRepo: async function(repoPath: { dir: string; file: string }) {
 			const state: { [oid: string]: State } = {}
 			const [sourcefiles, commitLogs] = await diff({
 				dir: repoPath.dir,
-				path: repoPath.file
+				path: repoPath.file,
 			})
 			commitLogs.forEach((log: Commit, i: number) => {
-				const timelineElements = this.parseText(sourcefiles[i][0])
-				timelineElements.push(...this.parseDiff(sourcefiles[i]))
-				const laneNumber =
-					Math.max(
-						...timelineElements.map(
-							(ele: TimelineElement) => ele.lane,
-						),
-					) + 1
+				const { blocks: timelineElements, laneNumber } = this.parseDiff(
+					sourcefiles[i],
+				)
 
 				state[log.oid || log.message] = {
 					sourceFile: sourcefiles[i],
@@ -196,176 +214,328 @@ const vue = Vue.extend({
 				.showOpenDialog(options)
 				.then((result: SelectedRepo) => result)
 			if (!selectedRepo.cancelled) {
-				const elements = selectedRepo.filePaths[0].split('/')
-				const dir = elements.slice(0, -1).join('/')
-				const file = elements.pop()
+				const [filePath] = selectedRepo.filePaths
+				const path = filePath.split('/')
+				const dir = path.slice(0, -1).join('/')
+				const file = path.pop()
 				if (file !== undefined) {
 					this.currentRepo = { dir, file }
+
+					fss.watchFile(filePath, () => {
+						this.currentRepo = { dir, file }
+					})
 				}
 			}
 		},
-		parseText: (sourceText: string) => {
-			const offsetReg = /(?:^|\s)offset="(.*?)s/
-			const durationReg = /(?:^|\s)duration="(.*?)s/
-			const laneReg = /(?:^|\s)lane="(.*?)"/
-
-			const clipElements: TimelineElement[] = []
-			sourceText
-				.trim()
-				.split(/\n/)
-				.forEach(line => {
-					if (line.match('<asset-clip')) {
-						const offset = line.match(offsetReg)
-						const duration = line.match(durationReg)
-						let lane
-						if (line.match(laneReg)) {
-							const match = line.match(laneReg)
-							lane = parseFloat(match![1])
-						} else {
-							lane = 0
-						}
-						clipElements.push({
-							offset: parseTime(offset![1]),
-							duration: parseTime(duration![1]),
-							lane,
-							color: '#717171',
-						})
-					}
-				})
-
-			return clipElements
-		},
 		parseDiff: (sourceFile: [string, Hunk[]]) => {
-			const durationReg = /(?:^|\s)duration="(.*?)s/
-			const offsetReg = /(?:^|\s)offset="(.*?)s/
+			const durationReg = /(?:^|\s)duration="(.*?)"/
+			const offsetReg = /(?:^|\s)offset="(.*?)"/
 			const laneReg = /(?:^|\s)lane="(.*?)"/
+			const startReg = /(?:^|\s)start="(.*?)"/
+			const idReg = /(?:^|\s)ref="(.*?)"/
 
-			const changes = []
-			const blocks: TimelineElement[] = []
-			if (sourceFile[1].length > 0) {
-				const forCommit: Hunk[][] = []
-				sourceFile[1].forEach((hunk: Hunk) => {
-					if (
-						Object.prototype.hasOwnProperty.call(hunk, 'added') &&
-						Object.prototype.hasOwnProperty.call(hunk, 'removed')
-					) {
-						forCommit[forCommit.length - 1].push(hunk)
-					} else {
-						forCommit.push([])
-					}
-				})
+			const laneArrays: TimelineElement[][] = []
 
-				changes.push(forCommit)
+			if (sourceFile[1].length === 0) {
+				sourceFile[0]
+					.trim()
+					.split(/\n/)
+					.forEach(line => {
+						if (line.match('<asset-clip')) {
+							const offset = line.match(offsetReg)
+							const duration = line.match(durationReg)
 
-				changes.forEach(commit => {
-					commit.forEach(hunk => {
-						let allSame = true
-						let assetClips: [string, boolean][] = []
-						let assetClipCount: number = 0
-						hunk.forEach((line: Hunk) => {
-							if (line.added === undefined) {
-								line.added = false
-							}
-							if (
-								line.value.match('<asset-clip') &&
-								typeof line.added === 'boolean'
-							) {
-								assetClips.push([line.value, line!.added])
-								assetClipCount ++
-							}
+							let id: string
 
-							if (line.added !== hunk[0].added && assetClipCount > 1) {
-								allSame = false
-							}
-						})
-						if (allSame && assetClips.length > 0) {
-							assetClips.forEach(clip => {
-								const line = clip[0].match(
-									/^.*\b(asset-clip )\b.*$/gm,
-								)
-								if (line) {
-									const offset = line![0].match(offsetReg)
-										? parseTime(
-												line![0].match(offsetReg)![1],
-										  )
-										: 0
-									const duration = line![0].match(durationReg)
-										? parseTime(
-												line![0].match(durationReg)![1],
-										  )
-										: 0
-									const lane = line![0].match(laneReg)
-										? parseInt(line![0].match(laneReg)![1])
-										: 0
-									const color =
-										hunk![0].added === true
-											? 'forestgreen'
-											: 'crimson'
-
-									blocks.push({
-										offset,
-										duration,
-										lane,
-										color,
-									})
-								}
-							})
-						} else if (!allSame && assetClips.length > 1) {
-							let color
-							const aOffset = parseTime(
-								assetClips![0][0].match(offsetReg)![1],
-							)
-							const aDuration = parseTime(
-								assetClips![0][0].match(durationReg)![1],
-							)
-							const bOffset = parseTime(
-								assetClips![1][0].match(offsetReg)![1],
-							)
-							const bDuration = parseTime(
-								assetClips![1][0].match(durationReg)![1],
-							)
-
-							let points = [
-								aOffset + aDuration,
-								bOffset + bDuration,
-							]
-
-							if (
-								(assetClips[0][1] && points[0] > points[1]) ||
-								(assetClips[1][1] && points[1] > points[0])
-							) {
-								color = 'forestgreen'
+							if (line.match(idReg) !== null) {
+								id = line.match(idReg)![1]
 							} else {
-								color = 'crimson'
+								id = ''
 							}
-
-							if (points[0] > points[1]) {
-								points = [points[1], points[0]]
-							}
-
-							const line =
-								assetClips![0][0].match(
-									/^.*\b(asset-clip )\b.*$/gm,
-								) || ''
 
 							let lane
-							if (line[0].match(laneReg)) {
-								lane = parseInt(line![0].match(laneReg)![1])
+							if (line.match(laneReg)) {
+								const match = line.match(laneReg)
+								lane = parseFloat(match![1])
 							} else {
 								lane = 0
 							}
 
-							blocks.push({
-								offset: points[0],
-								duration: Math.abs(points[0] - points[1]),
+							if (!laneArrays[lane]) {
+								laneArrays.push(
+									...Array.apply(
+										null,
+										Array(lane + 1 - laneArrays.length),
+									).map(function() {
+										return []
+									}),
+								)
+							}
+
+							let start
+
+							if (line.match(startReg)) {
+								start = parseTime(line!.match(startReg)![1])
+							} else {
+								start = 0
+							}
+
+							laneArrays[lane].push({
+								offset: parseTime(offset![1]),
+								duration: parseTime(duration![1]),
+								lane,
+								start,
+								color: 'forestgreen',
+								id,
+							})
+						}
+					})
+			}
+			if (sourceFile[1].length > 0) {
+				sourceFile[1].forEach((hunk: Hunk) => {
+					const lines = hunk.value.split('\n')
+
+					lines.forEach(line => {
+						if (line.match('<asset-clip')) {
+							let lane
+							let start
+							let duration: number
+							let offset: number
+							const color = hunk.added
+								? 'forestgreen'
+								: hunk.removed
+								? 'crimson'
+								: 'silver'
+
+							if (line.match(laneReg)) {
+								lane = parseInt(line!.match(laneReg)![1])
+							} else {
+								lane = 0
+							}
+
+							if (line.match(durationReg)) {
+								duration = parseTime(
+									line!.match(durationReg)![1],
+								)
+							} else {
+								duration = 0
+							}
+
+							if (line.match(offsetReg)) {
+								offset = parseTime(line!.match(offsetReg)![1])
+							} else {
+								offset = 0
+							}
+
+							if (line.match(startReg)) {
+								start = parseTime(line!.match(startReg)![1])
+							} else {
+								start = 0
+							}
+
+							if (!laneArrays[lane]) {
+								laneArrays.push(
+									...Array.apply(
+										null,
+										Array(lane + 1 - laneArrays.length),
+									).map(function() {
+										return []
+									}),
+								)
+							}
+
+							laneArrays[lane].push({
 								lane,
 								color,
+								duration,
+								offset,
+								start,
 							})
 						}
 					})
 				})
+
+				laneArrays.forEach(lane => {
+					lane.sort((a, b) => {
+						const aOffset =
+							a.offset > 3500 ? a.offset - 3600 : a.offset
+						const bOffset =
+							b.offset > 3500 ? b.offset - 3600 : b.offset
+
+						return aOffset - bOffset
+					})
+				})
+
+				laneArrays.forEach(lane => {
+					lane.map((clip, i) => {
+						let moreElements = true
+						const offset =
+							clip.offset > 3500
+								? clip.offset - 3600
+								: clip.offset
+						if (i + 1 === lane.length) {
+							moreElements = false
+						}
+
+						if (moreElements) {
+							const offsets =
+								roundTo2(clip.offset) ===
+								roundTo2(lane[i + 1].offset)
+							const ids = clip.id === lane[i + 1].id
+							const starts = clip.start === lane[i + 1].start
+							const durations =
+								clip.duration === lane[i + 1].duration
+
+							const overlappingElements = lane.filter(ele => {
+								const eleOffset =
+									ele.offset > 3500
+										? ele.offset - 3600
+										: ele.offset
+
+								if (
+									offset < eleOffset + ele.duration / 2 &&
+									eleOffset + ele.duration / 2 <
+										offset + clip.duration &&
+									ele.color !== 'crimson'
+								) {
+									return true
+								} else {
+									return false
+								}
+							})
+
+							overlappingElements.forEach((overlap, index) => {
+								const eleOffset =
+									overlap.offset > 3500
+										? overlap.offset - 3600
+										: overlap.offset
+
+								const offsets = eleOffset - offset
+								const starts = overlap.start - clip.start
+
+								if (
+									(offsets - starts < 0.5 &&
+										offsets - starts > 0) ||
+									(starts - offsets < 0.5 &&
+										starts - offsets > 0)
+								) {
+									overlap.color = 'silver'
+									clip.color = 'crimson'
+								}
+
+								if (index + 1 < overlappingElements.length) {
+									const nextOffset =
+										overlappingElements[index + 1].offset >
+										3500
+											? overlappingElements[index + 1]
+													.offset - 3600
+											: overlappingElements[index + 1]
+													.offset
+									if (
+										nextOffset -
+											(eleOffset + overlap.duration) >
+										0.5
+									) {
+										lane.push({
+											color: 'crimson',
+											//lane: overlap.lane,
+											offset:
+												eleOffset -
+												3.6 +
+												overlap.duration,
+											duration:
+												nextOffset -
+												(eleOffset + overlap.duration),
+											start: 0,
+										})
+									}
+								}
+							})
+
+							if (ids && starts && durations && offsets) {
+								clip.color = 'silver'
+								lane.splice(i + 1, 1)
+							} else if (clip.color === 'silver') {
+								null
+							} else if (
+								roundTo2(clip.start + clip.duration) -
+									roundTo2(
+										lane[i + 1].start +
+											lane[i + 1].duration,
+									) <
+									0.5 ||
+								roundTo2(
+									lane[i + 1].start + lane[i + 1].duration,
+								) -
+									roundTo2(clip.start + clip.duration) <
+									0.5
+							) {
+								const clipTiming =
+									clip.offset - clip.start + clip.duration
+								const nextClipTiming =
+									lane[i + 1].offset -
+									lane[i + 1].start +
+									clip.duration
+
+								if (
+									(clipTiming - nextClipTiming >= 0 &&
+										clipTiming - nextClipTiming < 0.5) ||
+									(nextClipTiming - clipTiming >= 0 &&
+										nextClipTiming - clipTiming < 0.5)
+								) {
+									lane[i + 1].color = 'silver'
+									clip.duration =
+										clip.duration - lane[i + 1].duration
+								}
+							}
+
+							if (overlappingElements.length > 1) {
+								lane.splice(i, 1)
+							}
+						}
+					})
+				})
 			}
-			return blocks
+
+			laneArrays.forEach(lane => {
+				lane.map((clip, i) => {
+					let moreElements = true
+
+					if (i + 1 === lane.length) {
+						moreElements = false
+					}
+
+					if (moreElements) {
+						const offset =
+							clip.offset > 3500
+								? clip.offset - 3600
+								: clip.offset
+						const nextOffset =
+							lane[i + 1].offset > 3500
+								? lane[i + 1].offset - 3603.6
+								: lane[i + 1].offset
+
+						if (
+							(clip.duration === lane[i + 1].duration &&
+								offset - nextOffset < 0.5 &&
+								offset - nextOffset > 0) ||
+							(nextOffset - offset < 0.5 &&
+								nextOffset - offset > 0)
+						) {
+							clip.color = 'silver'
+							lane.splice(i + 1, 1)
+						}
+					}
+				})
+			})
+
+			const laneNumber: number = laneArrays.length
+
+			const blocks: TimelineElement[] = laneArrays.flatMap(
+				(lane: TimelineElement[]) => lane,
+			)
+
+			return { blocks, laneNumber }
 		},
 	},
 })
