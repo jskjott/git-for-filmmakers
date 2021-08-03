@@ -12,7 +12,7 @@
     "isomorphic-git": "^0.60.1",
     "vue": "^2.6.10",
     "xml-crypto": "^1.4.0",
-    "xmldom": "^0.1.27"
+    "xmldom": "^0.6.0"
   },
   "devDependencies": {
     "@types/d3": "^5.7.2",
