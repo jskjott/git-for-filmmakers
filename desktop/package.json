@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "d3": "^5.9.7",
-    "isomorphic-git": "^0.60.1",
+    "isomorphic-git": "^1.8.2",
     "vue": "^2.6.10",
     "xml-crypto": "^1.4.0",
     "xmldom": "^0.1.27"
