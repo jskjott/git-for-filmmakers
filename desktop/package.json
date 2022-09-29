@@ -8,7 +8,7 @@
     "lint": "node_modules/.bin/eslint src --ext .js,.vue --fix"
   },
   "dependencies": {
-    "d3": "^5.9.7",
+    "d3": "^7.6.1",
     "isomorphic-git": "^0.60.1",
     "vue": "^2.6.10",
     "xml-crypto": "^1.4.0",
